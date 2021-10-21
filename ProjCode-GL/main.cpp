@@ -23,6 +23,9 @@ const int SCR_HEIGHT = 600;
 // used to control skybox buffer arrays
 GLuint skyboxVAO;
 GLuint skyboxVBO;
+// used to control testing triangle buffer arrays
+GLuint vaoID;
+GLuint vboID;
 
 // used to control the shader
 Shader shaderobjsky;
@@ -42,14 +45,11 @@ GLfloat mouse_lastX = SCR_WIDTH / 2.0;
 GLfloat mouse_lastY = SCR_HEIGHT / 2.0;
 GLfloat mouse_X, mouse_Y;	// record cursor positions
 
-
-
-// unresolved codes
-GLuint programID;
 float x_delta = 0.1f;
 int x_press_num = 0;
 
-
+// unresolved codes
+//GLuint programID;
 
 
 GLuint loadCubemap(std::vector<const GLchar*> faces)
@@ -185,11 +185,9 @@ void sendDataToOpenGL() {
         +0.0f, +0.5f, +0.0f,  // top
         +1.0f, +0.0f, +0.0f,
     };
-    GLuint vaoID;
     glGenVertexArrays(1, &vaoID);
-    glBindVertexArray(vaoID);  //first VAO
-    GLuint vboID;
     glGenBuffers(1, &vboID);
+    glBindVertexArray(vaoID);  
     glBindBuffer(GL_ARRAY_BUFFER, vboID);
     glBufferData(GL_ARRAY_BUFFER, sizeof(triangle), triangle, GL_STATIC_DRAW);
     // vertex position
@@ -198,6 +196,9 @@ void sendDataToOpenGL() {
     // vertex color
     glEnableVertexAttribArray(1);
     glVertexAttribPointer(1, 3, GL_FLOAT, GL_FALSE, 6 * sizeof(float), (char*)(3 * sizeof(float)));
+    // unbind VAO, VBO
+    glBindVertexArray(0);
+    glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, 0);
 }
 
 void initializedGL(void) {
@@ -222,6 +223,7 @@ void paintGL(void) {
     glClearColor(0.09f, 0.09f, 0.44f, 1.0f); //specify the background color, this is just an example
     glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
+
     //**************************************************
     // Draw skybox first
     glDepthMask(GL_FALSE);
@@ -241,27 +243,96 @@ void paintGL(void) {
     glDepthMask(GL_TRUE);
     //**************************************************
 
-    //只搞到这里现在
 
+    // the testing triangle
 
-
-
+    // set the camera view and transform matrices
+    viewTransformMatrix = glm::lookAt(cameraPos,
+        cameraPos + cameraFront, cameraUp);
+    projectionMatrix = glm::perspective(glm::radians(fov),
+        (GLfloat)SCR_WIDTH / (GLfloat)SCR_HEIGHT, 0.1f, 500.0f);
+    // Set the view position
+    shaderobjsky.setVec3("viewPos", cameraPos);
+    // Set view, projection matrices	
+    shaderobjsky.setMat4("viewTransformMatrix", viewTransformMatrix);
+    shaderobjsky.setMat4("projectionMatrix", projectionMatrix);
+    
+    // Set model transformation matrix and draw
+    glBindVertexArray(vaoID);
+    glBindBuffer(GL_ARRAY_BUFFER, vboID);///////////////////////
     glm::mat4 modelTransformMatrix = glm::mat4(1.0f);
     modelTransformMatrix = glm::translate(glm::mat4(1.0f),
-        glm::vec3(x_delta * x_press_num, 0.0f, 0.0f));;
-    GLint modelTransformMatrixUniformLocation =
-        glGetUniformLocation(programID, "modelTransformMatrix");
-    glUniformMatrix4fv(modelTransformMatrixUniformLocation, 1,
-        GL_FALSE, &modelTransformMatrix[0][0]);
-
+        glm::vec3(x_delta * x_press_num, 0.0f, -5.0f));/////////////////////
+    shaderobjsky.setMat4("modelTransformMatrix", modelTransformMatrix);
     glDrawArrays(GL_TRIANGLES, 0, 6);  //render primitives from array data
 }
 
-void framebuffer_size_callback(GLFWwindow* window, int width, int height) {
+void framebuffer_size_callback(GLFWwindow* window, int width, int height) 
+{
     glViewport(0, 0, width, height);
 }
 
-void key_callback(GLFWwindow* window, int key, int scancode, int action, int mods) {
+void mouse_button_callback(GLFWwindow* window, int button, int action, int mods)
+{
+    // Sets the mouse-button callback for the current window.
+        // Sets the mouse-button callback for the current window.
+    if (button == GLFW_MOUSE_BUTTON_LEFT && action == GLFW_PRESS) {
+        mouse_left = 1;
+        firstMouse = 1;
+    }
+    if (button == GLFW_MOUSE_BUTTON_LEFT && action == GLFW_RELEASE) {
+        mouse_left = 0;
+    }
+}
+
+void cursor_position_callback(GLFWwindow* window, double x, double y)
+{
+    // Sets the cursor position callback for the current window
+    mouse_X = x;
+    mouse_Y = y;
+    //std::cout << mouse_left << std::endl;
+    if (mouse_left == 1) {
+        if (firstMouse)
+        {
+            mouse_lastX = mouse_X;
+            mouse_lastY = mouse_Y;
+            firstMouse = 0;
+        }
+
+        GLfloat xoffset = mouse_X - mouse_lastX;
+        GLfloat yoffset = mouse_lastY - mouse_Y;
+        mouse_lastX = mouse_X;
+        mouse_lastY = mouse_Y;
+
+        GLfloat sensitivity = 0.05;
+        xoffset *= sensitivity;
+        yoffset *= sensitivity;
+
+        yaw += xoffset;
+        pitch += yoffset;
+
+        if (pitch > 89.0f)
+            pitch = 89.0f;
+        if (pitch < -89.0f)
+            pitch = -89.0f;
+
+        glm::vec3 front;
+        front.x = cos(glm::radians(yaw)) * cos(glm::radians(pitch));
+        front.y = sin(glm::radians(pitch));
+        front.z = sin(glm::radians(yaw)) * cos(glm::radians(pitch));
+        front = glm::normalize(front);
+        cameraFront = front;
+    }
+}
+
+void scroll_callback(GLFWwindow* window, double xoffset, double yoffset)
+{
+    // Sets the scoll callback for the current window.
+}
+
+void key_callback(GLFWwindow* window, int key, int scancode, int action, int mods) 
+{
+    // Set the Keyboard callback for the current window.
     if (key == GLFW_KEY_ESCAPE && action == GLFW_PRESS)
         glfwSetWindowShouldClose(window, true);
 
@@ -291,10 +362,10 @@ int main(int argc, char* argv[]) {
 #endif
 
     /* do not allow resizing */
-    glfwWindowHint(GLFW_RESIZABLE, GL_FALSE);
+    //glfwWindowHint(GLFW_RESIZABLE, GL_FALSE);
 
     /* Create a windowed mode window and its OpenGL context */
-    window = glfwCreateWindow(512, 512, argv[0], NULL, NULL);
+    window = glfwCreateWindow(SCR_WIDTH, SCR_HEIGHT, argv[0], NULL, NULL);
     if (!window) {
         std::cout << "Failed to create GLFW window" << std::endl;
         glfwTerminate();
@@ -303,15 +374,14 @@ int main(int argc, char* argv[]) {
 
     /* Make the window's context current */
     glfwMakeContextCurrent(window);
+
+    /*register callback functions*/
     glfwSetFramebufferSizeCallback(window, framebuffer_size_callback);
     glfwSetKeyCallback(window, key_callback);
+    glfwSetScrollCallback(window, scroll_callback);
+    glfwSetCursorPosCallback(window, cursor_position_callback);
+    glfwSetMouseButtonCallback(window, mouse_button_callback);
 
-    /* Initialize the glew */
-    if (GLEW_OK != glewInit()) {
-        std::cout << "Failed to initialize GLEW" << std::endl;
-        return -1;
-    }
-    get_OpenGL_info();
     initializedGL();
 
     /* Loop until the user closes the window */
@@ -330,5 +400,4 @@ int main(int argc, char* argv[]) {
     return 0;
 }
 
-
-// It is just a testing git message 
+// 着色器还没调
