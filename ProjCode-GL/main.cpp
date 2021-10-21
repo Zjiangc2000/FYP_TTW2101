@@ -17,23 +17,22 @@
 #include <vector>
 
 // screen setting
-const int SCR_WIDTH = 800;
-const int SCR_HEIGHT = 600;
+const int SCR_WIDTH = 1600;
+const int SCR_HEIGHT = 800;
 
 // used to control skybox buffer arrays
 GLuint skyboxVAO;
 GLuint skyboxVBO;
 // used to control testing triangle buffer arrays
-GLuint vaoID;
-GLuint vboID;
+GLuint vaoID, vboID, eboID;
 
 // used to control the shader
-Shader shaderobjsky;
+Shader shaderobjsky, shaderobj1;
 
 GLuint cubemapTexture;
 
 // variables for camera and mouse events
-glm::vec3 cameraPos = glm::vec3(0.0f, 0.0f, 0.0f);
+glm::vec3 cameraPos = glm::vec3(0.0f, 4.0f, 7.0f);
 glm::vec3 cameraFront = glm::vec3(0.0f, 0.0f, -1.0f);
 glm::vec3 cameraUp = glm::vec3(0.0f, 1.0f, 0.0f);
 GLfloat yaw = -90.0f;
@@ -47,10 +46,6 @@ GLfloat mouse_X, mouse_Y;	// record cursor positions
 
 float x_delta = 0.1f;
 int x_press_num = 0;
-
-// unresolved codes
-//GLuint programID;
-
 
 GLuint loadCubemap(std::vector<const GLchar*> faces)
 {
@@ -86,14 +81,6 @@ GLuint loadCubemap(std::vector<const GLchar*> faces)
     glBindTexture(GL_TEXTURE_CUBE_MAP, 0);
 
     return textureID;
-}
-
-GLuint collisionDetect(glm::vec4 vectorA, glm::vec4 vectorB, GLfloat threshold)
-{
-    if (glm::distance(vectorA, vectorB) <= threshold)
-        return 1;
-    else
-        return 0;
 }
 
 void get_OpenGL_info() {
@@ -173,29 +160,38 @@ void sendDataToOpenGL() {
     cubemapTexture = loadCubemap(faces);
     
 
-    // Testing triangle
-    const GLfloat triangle[] =
-    {
-        -0.5f, -0.5f, +0.0f,  // left
-        +1.0f, +0.0f, +0.0f,  // color
-
-        +0.5f, -0.5f, +0.0f,  // right
-        +1.0f, +0.0f, +0.0f,
-
-        +0.0f, +0.5f, +0.0f,  // top
-        +1.0f, +0.0f, +0.0f,
-    };
+    // Testing 3D plane
     glGenVertexArrays(1, &vaoID);
     glGenBuffers(1, &vboID);
-    glBindVertexArray(vaoID);  
+    glGenBuffers(1, &eboID);
+
+    
+    const GLfloat squarePlane[] =
+    {
+        +5.0f, -0.001f, +5.0f, // position 0
+        +0.0f, +0.0f, +1.0f, // color
+
+        +5.0f, -0.001f, -5.0f, // position 1
+        +0.0f, +0.0f, +1.0f,
+
+        -5.0f, -0.001f, +5.0f, // position 2
+        +0.0f, +0.0f, +1.0f,
+
+        -5.0f, -0.001f, -5.0f, // position 3
+        +0.0f, +0.0f, +1.0f,
+    };
+    GLushort indices0[] = { 0, 1, 3, 0, 2, 3 };
+    glBindVertexArray(vaoID);
     glBindBuffer(GL_ARRAY_BUFFER, vboID);
-    glBufferData(GL_ARRAY_BUFFER, sizeof(triangle), triangle, GL_STATIC_DRAW);
+    glBufferData(GL_ARRAY_BUFFER, sizeof(squarePlane), squarePlane, GL_STATIC_DRAW);
+    glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, eboID);
+    glBufferData(GL_ELEMENT_ARRAY_BUFFER, sizeof(indices0), indices0, GL_STATIC_DRAW);
     // vertex position
     glEnableVertexAttribArray(0);
-    glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 6 * sizeof(float), 0);
+    glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 6 * sizeof(GL_FLOAT), 0);
     // vertex color
     glEnableVertexAttribArray(1);
-    glVertexAttribPointer(1, 3, GL_FLOAT, GL_FALSE, 6 * sizeof(float), (char*)(3 * sizeof(float)));
+    glVertexAttribPointer(1, 3, GL_FLOAT, GL_FALSE, 6 * sizeof(GL_FLOAT), (char*)(3 * sizeof(GL_FLOAT)));
     // unbind VAO, VBO
     glBindVertexArray(0);
     glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, 0);
@@ -212,20 +208,23 @@ void initializedGL(void) {
     sendDataToOpenGL();
     
     // set up the vertex shader and fragment shader
-    shaderobjsky.setupShader("VertexShaderCode.glsl", "FragmentShaderCode.glsl");
+    shaderobj1.setupShader("VertexShaderCode.glsl", "FragmentShaderCode.glsl");
+    shaderobjsky.setupShader("VertexShaderCode1.glsl", "FragmentShaderCode1.glsl");
     
     glEnable(GL_DEPTH_TEST);
     glEnable(GL_CULL_FACE);
 }
 
-void paintGL(void) {
-    // always run
+void paintGL(void) // always run
+{
     glClearColor(0.09f, 0.09f, 0.44f, 1.0f); //specify the background color, this is just an example
+    glEnable(GL_DEPTH_TEST);
     glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
 
     //**************************************************
     // Draw skybox first
+    
     glDepthMask(GL_FALSE);
     shaderobjsky.use();
     glm::mat4 viewTransformMatrix = glm::lookAt(cameraPos, cameraPos + cameraFront, cameraUp);
@@ -241,30 +240,38 @@ void paintGL(void) {
     glDrawArrays(GL_TRIANGLES, 0, 36);
     glBindVertexArray(0);
     glDepthMask(GL_TRUE);
+    
     //**************************************************
 
 
-    // the testing triangle
-
+    // the testing squarePlane
+    shaderobj1.use();
     // set the camera view and transform matrices
     viewTransformMatrix = glm::lookAt(cameraPos,
         cameraPos + cameraFront, cameraUp);
     projectionMatrix = glm::perspective(glm::radians(fov),
         (GLfloat)SCR_WIDTH / (GLfloat)SCR_HEIGHT, 0.1f, 500.0f);
-    // Set the view position
-    shaderobjsky.setVec3("viewPos", cameraPos);
     // Set view, projection matrices	
-    shaderobjsky.setMat4("viewTransformMatrix", viewTransformMatrix);
-    shaderobjsky.setMat4("projectionMatrix", projectionMatrix);
+    shaderobj1.setMat4("viewTransformMatrix", viewTransformMatrix);
+    shaderobj1.setMat4("projectionMatrix", projectionMatrix);   
     
     // Set model transformation matrix and draw
     glBindVertexArray(vaoID);
-    glBindBuffer(GL_ARRAY_BUFFER, vboID);///////////////////////
+    glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, eboID);
     glm::mat4 modelTransformMatrix = glm::mat4(1.0f);
     modelTransformMatrix = glm::translate(glm::mat4(1.0f),
-        glm::vec3(x_delta * x_press_num, 0.0f, -5.0f));/////////////////////
-    shaderobjsky.setMat4("modelTransformMatrix", modelTransformMatrix);
-    glDrawArrays(GL_TRIANGLES, 0, 6);  //render primitives from array data
+        glm::vec3(x_delta * x_press_num, 1.0f, 0.0f));
+    shaderobj1.setMat4("modelTransformMatrix", modelTransformMatrix);
+    glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_SHORT, 0);
+    
+    modelTransformMatrix = glm::translate(glm::mat4(1.0f),
+        glm::vec3(5.0f + x_delta * x_press_num, 1.0f, 0.0f));
+    shaderobj1.setMat4("modelTransformMatrix", modelTransformMatrix);
+    glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_SHORT, 0);
+
+    // unbind VAO, VBO
+    glBindVertexArray(0);
+    glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, 0);
 }
 
 void framebuffer_size_callback(GLFWwindow* window, int width, int height) 
@@ -400,4 +407,4 @@ int main(int argc, char* argv[]) {
     return 0;
 }
 
-// 着色器还没调
+

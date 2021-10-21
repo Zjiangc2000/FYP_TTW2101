@@ -25,4 +25,18 @@
       <Filter>Source Files</Filter>
     </ClCompile>
   </ItemGroup>
+  <ItemGroup>
+    <None Include="VertexShaderCode.glsl">
+      <Filter>Source Files</Filter>
+    </None>
+    <None Include="FragmentShaderCode.glsl">
+      <Filter>Source Files</Filter>
+    </None>
+    <None Include="FragmentShaderCode1.glsl">
+      <Filter>Source Files</Filter>
+    </None>
+    <None Include="VertexShaderCode1.glsl">
+      <Filter>Source Files</Filter>
+    </None>
+  </ItemGroup>
 </Project>
