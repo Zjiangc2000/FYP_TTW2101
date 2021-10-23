@@ -44,6 +44,9 @@ GLfloat mouse_lastX = SCR_WIDTH / 2.0;
 GLfloat mouse_lastY = SCR_HEIGHT / 2.0;
 GLfloat mouse_X, mouse_Y;	// record cursor positions
 
+// array used to control keyboard events
+bool keys[1024];
+
 float x_delta = 0.1f;
 int x_press_num = 0;
 
@@ -180,7 +183,7 @@ void sendDataToOpenGL() {
         -5.0f, -0.001f, -5.0f, // position 3
         +0.0f, +0.0f, +1.0f,
     };
-    GLushort indices0[] = { 0, 1, 3, 0, 2, 3 };
+    GLushort indices0[] = { 0, 1, 3, 0, 3, 2 };
     glBindVertexArray(vaoID);
     glBindBuffer(GL_ARRAY_BUFFER, vboID);
     glBufferData(GL_ARRAY_BUFFER, sizeof(squarePlane), squarePlane, GL_STATIC_DRAW);
@@ -212,7 +215,8 @@ void initializedGL(void) {
     shaderobjsky.setupShader("VertexShaderCode1.glsl", "FragmentShaderCode1.glsl");
     
     glEnable(GL_DEPTH_TEST);
-    glEnable(GL_CULL_FACE);
+    glEnable(GL_CULL_FACE); // this line is for controling face culling, 
+                            // in opengl triangles whose vertices are defined counterclockwise is considered "fronting"
 }
 
 void paintGL(void) // always run
@@ -261,11 +265,6 @@ void paintGL(void) // always run
     glm::mat4 modelTransformMatrix = glm::mat4(1.0f);
     modelTransformMatrix = glm::translate(glm::mat4(1.0f),
         glm::vec3(x_delta * x_press_num, 1.0f, 0.0f));
-    shaderobj1.setMat4("modelTransformMatrix", modelTransformMatrix);
-    glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_SHORT, 0);
-    
-    modelTransformMatrix = glm::translate(glm::mat4(1.0f),
-        glm::vec3(5.0f + x_delta * x_press_num, 1.0f, 0.0f));
     shaderobj1.setMat4("modelTransformMatrix", modelTransformMatrix);
     glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_SHORT, 0);
 
@@ -341,14 +340,36 @@ void key_callback(GLFWwindow* window, int key, int scancode, int action, int mod
 {
     // Set the Keyboard callback for the current window.
     if (key == GLFW_KEY_ESCAPE && action == GLFW_PRESS)
-        glfwSetWindowShouldClose(window, true);
+        glfwSetWindowShouldClose(window, GL_TRUE);
 
-    if (key == GLFW_KEY_A && action == GLFW_PRESS) {
+    // record keyboard states
+    if (key >= 0 && key < 1024)
+    {
+        if (action == GLFW_PRESS)
+            keys[key] = true;
+        else if (action == GLFW_RELEASE)
+            keys[key] = false;
+    }
+}
+
+void do_movement()
+{
+    // control camera movements
+    GLfloat cameraSpeed = 0.02f;
+    if (keys[GLFW_KEY_W])
+        cameraPos += cameraSpeed * cameraFront;
+    if (keys[GLFW_KEY_S])
+        cameraPos -= cameraSpeed * cameraFront;
+    if (keys[GLFW_KEY_A])
+        cameraPos -= glm::normalize(glm::cross(cameraFront, cameraUp)) * cameraSpeed;
+    if (keys[GLFW_KEY_D])
+        cameraPos += glm::normalize(glm::cross(cameraFront, cameraUp)) * cameraSpeed;
+    
+    // control the plane position
+    if (keys[GLFW_KEY_LEFT]) 
         x_press_num -= 1;
-    }
-    if (key == GLFW_KEY_D && action == GLFW_PRESS) {
+    if (keys[GLFW_KEY_RIGHT])
         x_press_num += 1;
-    }
 }
 
 int main(int argc, char* argv[]) {
@@ -401,6 +422,9 @@ int main(int argc, char* argv[]) {
 
         /* Poll for and process events */
         glfwPollEvents();
+
+        /* Movement events and light adjustments*/
+        do_movement();
     }
 
     glfwTerminate();
