@@ -154,12 +154,28 @@ void sendDataToOpenGL() {
     glBindVertexArray(0);
     // Cubemap (Skybox)
     std::vector<const GLchar*> faces;
-    faces.push_back("Textures/skybox/right.bmp");
-    faces.push_back("Textures/skybox/left.bmp");
-    faces.push_back("Textures/skybox/top.bmp");
-    faces.push_back("Textures/skybox/bottom.bmp");
-    faces.push_back("Textures/skybox/back.bmp");
-    faces.push_back("Textures/skybox/front.bmp");
+
+    // A actual skybox of universe station, violently screen shoot from google map
+    //faces.push_back("Textures/skybox/right1.png");
+    //faces.push_back("Textures/skybox/left1.png");
+    //faces.push_back("Textures/skybox/top1.png");
+    //faces.push_back("Textures/skybox/bottom1.png");
+    //faces.push_back("Textures/skybox/back1.png");
+    //faces.push_back("Textures/skybox/front1.png");
+    //A Tesing skybox texture from the internet
+    faces.push_back("Textures/skybox/right.jpg");
+    faces.push_back("Textures/skybox/left.jpg");
+    faces.push_back("Textures/skybox/top.jpg");
+    faces.push_back("Textures/skybox/bottom.jpg");
+    faces.push_back("Textures/skybox/back.jpg");
+    faces.push_back("Textures/skybox/front.jpg");
+    // A Space skybox texture
+    //faces.push_back("Textures/skybox/right.bmp");
+    //faces.push_back("Textures/skybox/left.bmp");
+    //faces.push_back("Textures/skybox/top.bmp");
+    //faces.push_back("Textures/skybox/bottom.bmp");
+    //faces.push_back("Textures/skybox/back.bmp");
+    //faces.push_back("Textures/skybox/front.bmp");
     cubemapTexture = loadCubemap(faces);
     
 
